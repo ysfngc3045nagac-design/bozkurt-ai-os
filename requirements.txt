@@ -5,3 +5,4 @@ requests
 pyngrok
 scikit-learn
 matplotlib
+gunicorn
