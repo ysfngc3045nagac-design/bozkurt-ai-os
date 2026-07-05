@@ -1,0 +1,8 @@
+
+__pycache__/
+*.pyc
+game_lineups.csv
+game_events.csv
+appearances.csv
+player-scores.zip
+extracted_player_scores/
