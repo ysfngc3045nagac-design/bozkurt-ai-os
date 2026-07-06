@@ -201,6 +201,17 @@ def get_teams_by_league():
     teams = STATIC_TEAMS.get(league, [])
     return jsonify({"status":"ok","league":league,"teams":sorted(teams)})
 
+@app.route("/api/countries")
+def get_countries():
+    countries = sorted(set(v.get("country","Diğer") for v in LEAGUE_CONFIG.values()))
+    return jsonify({"status":"ok","countries":countries})
+
+@app.route("/api/leagues_by_country")
+def get_leagues_by_country():
+    country = request.args.get("country","")
+    leagues = [k for k,v in LEAGUE_CONFIG.items() if v.get("country","")==country and k in STATIC_TEAMS]
+    return jsonify({"status":"ok","country":country,"leagues":sorted(leagues)})
+
 @app.route("/api/bankroll", methods=["GET"])
 def bankroll_gor():
     conn = get_db()
@@ -367,7 +378,8 @@ input,select{background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255
 <div class="glass" style="padding:20px;max-width:600px">
 <h3 style="margin:0 0 16px;color:#60a5fa">🔍 Manuel Analiz</h3>
 <div style="display:flex;flex-direction:column;gap:10px">
-<select id="leagueInput" onchange="onLeagueChange()"><option value="">Önce lig seçin...</option></select>
+<select id="countryInput" onchange="onCountryChange()"><option value="">Ülke seçin...</option></select>
+<select id="leagueInput" onchange="onLeagueChange()"><option value="">Önce ülke seçin...</option></select>
 <select id="homeInput"><option value="">Önce lig seçin...</option></select>
 <select id="awayInput"><option value="">Önce lig seçin...</option></select>
 <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
@@ -411,10 +423,26 @@ async function loadMatches(){
   populateLeagueFilter();renderMatches();}
   catch(e){document.getElementById('matchList').innerHTML='<div style="color:#f87171;text-align:center;padding:20px">Yüklenemedi</div>';}
 }
-async function loadLeagues(){
-  try{const r=await fetch('/api/leagues');const d=await r.json();
-  const ls=document.getElementById('leagueInput');
-  (d.leagues||[]).forEach(l=>{const o=document.createElement('option');o.value=l;o.textContent=l;ls.appendChild(o);});}catch(e){}
+async function loadCountries(){
+  try{const r=await fetch('/api/countries');const d=await r.json();
+  const cs=document.getElementById('countryInput');
+  (d.countries||[]).forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;cs.appendChild(o);});}catch(e){}
+}
+async function onCountryChange(){
+  const country=document.getElementById('countryInput').value;
+  const leagueSel=document.getElementById('leagueInput');
+  const homeSel=document.getElementById('homeInput');
+  const awaySel=document.getElementById('awayInput');
+  homeSel.innerHTML='<option value="">Önce lig seçin...</option>';
+  awaySel.innerHTML='<option value="">Önce lig seçin...</option>';
+  if(!country){leagueSel.innerHTML='<option value="">Önce ülke seçin...</option>';return;}
+  leagueSel.innerHTML='<option value="">Yükleniyor...</option>';
+  try{
+    const r=await fetch(`/api/leagues_by_country?country=${encodeURIComponent(country)}`);
+    const d=await r.json();
+    const leagues=d.leagues||[];
+    leagueSel.innerHTML='<option value="">Lig seçin...</option>'+leagues.map(l=>`<option value="${l}">${l}</option>`).join('');
+  }catch(e){leagueSel.innerHTML='<option value="">Yüklenemedi</option>';}
 }
 async function loadTeams(){
   try{const r=await fetch('/api/teams');const d=await r.json();
@@ -623,7 +651,7 @@ async function kuponSonuclandir(kuponId,sonuc){
   try{await fetch(`/api/kupon/${kuponId}/sonuc`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sonuc})});
   loadKuponlar();loadPerformans();loadBankroll();}catch(e){}
 }
-loadStats();loadMatches();loadLeagues();loadTeams();
+loadStats();loadMatches();loadCountries();loadTeams();
 </script>
 </body>
 </html>"""
