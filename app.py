@@ -19,9 +19,10 @@ ENABLE_LIVE_DATA = os.environ.get("ENABLE_LIVE_DATA", "true").lower() == "true"
 ENABLE_SCHEDULER = os.environ.get("ENABLE_SCHEDULER", "true").lower() == "true"
 
 def get_db():
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=15)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA busy_timeout=15000")
     return conn
 
 def init_db():
