@@ -27,14 +27,6 @@ def _safe_float(v, default=0.0):
     try: return float(v)
     except: return default
 
-def _read_csv(path):
-    if not os.path.exists(path): return [], []
-    rows=[]
-    with open(path, newline="", encoding="utf-8", errors="ignore") as f:
-        reader=csv.DictReader(f)
-        for row in reader: rows.append(row)
-    return rows, (reader.fieldnames or [])
-
 def build_team_stats_from_csv():
     if _CACHE["loaded"]: return _CACHE["teams"]
     stats=defaultdict(lambda:{
@@ -44,66 +36,69 @@ def build_team_stats_from_csv():
         "results":[],"league":"",
     })
 
-    # Matches.csv
-    rows,fields=_read_csv(MATCHES_CSV)
-    if rows:
-        c_home=_find_col(fields,"home_team"); c_away=_find_col(fields,"away_team")
-        c_hg=_find_col(fields,"home_goals"); c_ag=_find_col(fields,"away_goals")
-        c_league=_find_col(fields,"league")
-        c_helo=_find_col(fields,"home_elo"); c_aelo=_find_col(fields,"away_elo")
-        if c_home and c_away:
-            for row in rows:
-                h,a=row.get(c_home,"").strip(),row.get(c_away,"").strip()
-                if not h or not a: continue
-                hg=_safe_float(row.get(c_hg)) if c_hg else None
-                ag=_safe_float(row.get(c_ag)) if c_ag else None
-                league=row.get(c_league,"").strip() if c_league else ""
-                sh,sa=stats[h],stats[a]
-                if league: sh["league"]=sh["league"] or league; sa["league"]=sa["league"] or league
-                if c_helo:
-                    he=_safe_float(row.get(c_helo))
-                    if he: sh["elo"]=(sh["elo"]*sh["elo_n"]+he)/(sh["elo_n"]+1); sh["elo_n"]+=1
-                if c_aelo:
-                    ae=_safe_float(row.get(c_aelo))
-                    if ae: sa["elo"]=(sa["elo"]*sa["elo_n"]+ae)/(sa["elo_n"]+1); sa["elo_n"]+=1
-                if hg is not None and ag is not None:
+    if os.path.exists(MATCHES_CSV):
+        with open(MATCHES_CSV, newline="", encoding="utf-8", errors="ignore") as f:
+            reader = csv.DictReader(f)
+            fields = reader.fieldnames or []
+            c_home=_find_col(fields,"home_team"); c_away=_find_col(fields,"away_team")
+            c_hg=_find_col(fields,"home_goals"); c_ag=_find_col(fields,"away_goals")
+            c_league=_find_col(fields,"league")
+            c_helo=_find_col(fields,"home_elo"); c_aelo=_find_col(fields,"away_elo")
+            if c_home and c_away:
+                for row in reader:
+                    h,a=row.get(c_home,"").strip(),row.get(c_away,"").strip()
+                    if not h or not a: continue
+                    hg=_safe_float(row.get(c_hg)) if c_hg else None
+                    ag=_safe_float(row.get(c_ag)) if c_ag else None
+                    league=row.get(c_league,"").strip() if c_league else ""
+                    sh,sa=stats[h],stats[a]
+                    if league: sh["league"]=sh["league"] or league; sa["league"]=sa["league"] or league
+                    if c_helo:
+                        he=_safe_float(row.get(c_helo))
+                        if he: sh["elo"]=(sh["elo"]*sh["elo_n"]+he)/(sh["elo_n"]+1); sh["elo_n"]+=1
+                    if c_aelo:
+                        ae=_safe_float(row.get(c_aelo))
+                        if ae: sa["elo"]=(sa["elo"]*sa["elo_n"]+ae)/(sa["elo_n"]+1); sa["elo_n"]+=1
+                    if hg is not None and ag is not None:
+                        sh["goals_for"]+=hg; sh["goals_against"]+=ag
+                        sa["goals_for"]+=ag; sa["goals_against"]+=hg
+                        sh["played"]+=1; sa["played"]+=1
+                        sh["home_played"]+=1; sa["away_played"]+=1
+                        if hg>ag: sh["points"]+=3; sh["home_points"]+=3; sh["results"].append("W"); sa["results"].append("L")
+                        elif hg<ag: sa["points"]+=3; sa["away_points"]+=3; sa["results"].append("W"); sh["results"].append("L")
+                        else: sh["points"]+=1; sa["points"]+=1; sh["home_points"]+=1; sa["away_points"]+=1; sh["results"].append("D"); sa["results"].append("D")
+
+    if os.path.exists(ELO_CSV):
+        with open(ELO_CSV, newline="", encoding="utf-8", errors="ignore") as f:
+            reader = csv.DictReader(f)
+            fields = reader.fieldnames or []
+            c_team=_find_col(fields,"team"); c_elo=_find_col(fields,"elo")
+            if c_team and c_elo:
+                for row in reader:
+                    t=row.get(c_team,"").strip()
+                    if not t: continue
+                    e=_safe_float(row.get(c_elo))
+                    if e:
+                        s=stats[t]; s["elo"]=(s["elo"]*s["elo_n"]+e)/(s["elo_n"]+1); s["elo_n"]+=1
+
+    if os.path.exists(GAMES_CSV):
+        with open(GAMES_CSV, newline="", encoding="utf-8", errors="ignore") as f:
+            reader = csv.DictReader(f)
+            fields = reader.fieldnames or []
+            c_home=_find_col(fields,"home_team"); c_away=_find_col(fields,"away_team")
+            c_hg=_find_col(fields,"home_goals"); c_ag=_find_col(fields,"away_goals")
+            if c_home and c_away and c_hg and c_ag:
+                for row in reader:
+                    h,a=row.get(c_home,"").strip(),row.get(c_away,"").strip()
+                    if not h or not a: continue
+                    hg,ag=_safe_float(row.get(c_hg)),_safe_float(row.get(c_ag))
+                    sh,sa=stats[h],stats[a]
                     sh["goals_for"]+=hg; sh["goals_against"]+=ag
                     sa["goals_for"]+=ag; sa["goals_against"]+=hg
                     sh["played"]+=1; sa["played"]+=1
-                    sh["home_played"]+=1; sa["away_played"]+=1
-                    if hg>ag: sh["points"]+=3; sh["home_points"]+=3; sh["results"].append("W"); sa["results"].append("L")
-                    elif hg<ag: sa["points"]+=3; sa["away_points"]+=3; sa["results"].append("W"); sh["results"].append("L")
-                    else: sh["points"]+=1; sa["points"]+=1; sh["home_points"]+=1; sa["away_points"]+=1; sh["results"].append("D"); sa["results"].append("D")
-
-    # EloRatings.csv
-    rows,fields=_read_csv(ELO_CSV)
-    if rows:
-        c_team=_find_col(fields,"team"); c_elo=_find_col(fields,"elo")
-        if c_team and c_elo:
-            for row in rows:
-                t=row.get(c_team,"").strip()
-                if not t: continue
-                e=_safe_float(row.get(c_elo))
-                if e:
-                    s=stats[t]; s["elo"]=(s["elo"]*s["elo_n"]+e)/(s["elo_n"]+1); s["elo_n"]+=1
-
-    # games.csv
-    rows,fields=_read_csv(GAMES_CSV)
-    if rows:
-        c_home=_find_col(fields,"home_team"); c_away=_find_col(fields,"away_team")
-        c_hg=_find_col(fields,"home_goals"); c_ag=_find_col(fields,"away_goals")
-        if c_home and c_away and c_hg and c_ag:
-            for row in rows:
-                h,a=row.get(c_home,"").strip(),row.get(c_away,"").strip()
-                if not h or not a: continue
-                hg,ag=_safe_float(row.get(c_hg)),_safe_float(row.get(c_ag))
-                sh,sa=stats[h],stats[a]
-                sh["goals_for"]+=hg; sh["goals_against"]+=ag
-                sa["goals_for"]+=ag; sa["goals_against"]+=hg
-                sh["played"]+=1; sa["played"]+=1
-                if hg>ag: sh["results"].append("W"); sa["results"].append("L")
-                elif hg<ag: sa["results"].append("W"); sh["results"].append("L")
-                else: sh["results"].append("D"); sa["results"].append("D")
+                    if hg>ag: sh["results"].append("W"); sa["results"].append("L")
+                    elif hg<ag: sa["results"].append("W"); sh["results"].append("L")
+                    else: sh["results"].append("D"); sa["results"].append("D")
 
     teams={}
     for name,s in stats.items():
@@ -162,4 +157,4 @@ def get_all_team_names(search=""):
     if search: names=[n for n in names if search.lower() in n.lower()]
     return names
 
-print("✅ data_loader.py hazır!")
+print("✅ data_loader.py hazır! (v2 - bellek optimizasyonu)")
