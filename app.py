@@ -71,22 +71,30 @@ def fetch_live_matches():
     except: pass
     if API_FOOTBALL_KEY:
         try:
+            from datetime import timedelta as _td
             headers = {"x-apisports-key": API_FOOTBALL_KEY}
-            r = requests.get("https://v3.football.api-sports.io/fixtures?next=30", headers=headers, timeout=10)
-            if r.status_code == 200:
-                for f in (r.json().get("response") or []):
-                    fixture = f.get("fixture", {})
-                    teams = f.get("teams", {})
-                    league = f.get("league", {})
-                    matches.append({
-                        "id": str(fixture.get("id","")),
-                        "home": teams.get("home",{}).get("name",""),
-                        "away": teams.get("away",{}).get("name",""),
-                        "league": league.get("name",""),
-                        "date": (fixture.get("date","") or "")[:16].replace("T"," "),
-                        "status": "scheduled",
-                        "odds_home": 2.0, "odds_draw": 3.3, "odds_away": 3.5,
-                    })
+            for day_offset in range(0, 3):
+                target_date = (datetime.now() + _td(days=day_offset)).strftime("%Y-%m-%d")
+                r = requests.get(f"https://v3.football.api-sports.io/fixtures?date={target_date}", headers=headers, timeout=10)
+                if r.status_code == 200:
+                    for f in (r.json().get("response") or []):
+                        fixture = f.get("fixture", {})
+                        status = (fixture.get("status") or {}).get("short","")
+                        if status != "NS":
+                            continue
+                        teams = f.get("teams", {})
+                        league = f.get("league", {})
+                        matches.append({
+                            "id": str(fixture.get("id","")),
+                            "home": teams.get("home",{}).get("name",""),
+                            "away": teams.get("away",{}).get("name",""),
+                            "league": league.get("name",""),
+                            "date": (fixture.get("date","") or "")[:16].replace("T"," "),
+                            "status": "scheduled",
+                            "odds_home": 2.0, "odds_draw": 3.3, "odds_away": 3.5,
+                        })
+                if len(matches) >= 40:
+                    break
         except: pass
     if FOOTBALL_DATA_KEY:
         try:
