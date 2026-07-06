@@ -35,40 +35,6 @@ LEAGUE_CONFIG = {
     "PSL": {"country": "Güney Afrika", "level": 2, "avg_xg": 1.2},
 }
 
-# --- BUG FIX: dış API'lerden / eski verilerden gelen lig isimleri
-# STATIC_TEAMS ve LEAGUE_CONFIG'teki kanonik isimlerle birebir uyuşmuyordu.
-# Örn: DB'de "English Premier League" yazıyordu ama sistem "Premier League" bekliyor.
-# Bu uyuşmazlık yüzünden takım bulunamıyor, varsayılan (elo=1500, rank=10) değerlere
-# düşülüyor ve analiz gerçek veriyi yansıtmıyordu.
-LEAGUE_NAME_ALIASES = {
-    "English Premier League": "Premier League",
-    "EPL": "Premier League",
-    "England Premier League": "Premier League",
-    "English Championship": "Championship",
-    "Spanish La Liga": "La Liga",
-    "LaLiga": "La Liga",
-    "German Bundesliga": "Bundesliga",
-    "1. Bundesliga": "Bundesliga",
-    "Italian Serie A": "Serie A",
-    "French Ligue 1": "Ligue 1",
-    "Turkish Super Lig": "Süper Lig",
-    "Turkish Süper Lig": "Süper Lig",
-    "Super Lig": "Süper Lig",
-    "Turkiye Super Lig": "Süper Lig",
-    "Dutch Eredivisie": "Eredivisie",
-    "Portuguese Primeira Liga": "Primeira Liga",
-    "Brazilian Serie A": "Brasileirao",
-    "Brazil Serie A": "Brasileirao",
-}
-
-def normalize_league_name(name: str) -> str:
-    """Dış kaynaklardan gelen lig isimlerini kanonik isme çevirir."""
-    if not name:
-        return name
-    if name in LEAGUE_CONFIG:
-        return name
-    return LEAGUE_NAME_ALIASES.get(name.strip(), name)
-
 LIGLER = {
     'Süper Lig': {'gol_ort': 2.55, 'ev_avantaj': 48},
     'TFF 1. Lig': {'gol_ort': 2.45, 'ev_avantaj': 46},
@@ -102,16 +68,11 @@ STAKE_MAX_YUZDE = 5
 STOP_LOSS_YUZDE = 20
 XG_PENALTI = 0.76
 XG_BOS_KALE = 0.92
-
-# --- BUG FIX: 7.0 puanlık eşik gerçekçi değildi (no-vig'e göre model olasılığının
-# 7 tam puan üstünde olmasını istiyordu). 31 maçlık günlerde sadece 1 value bet
-# çıkmasının ana sebebi buydu. Shin's method ile no-vig hesaplaması daha isabetli
-# hale geldiği için eşiği de mantıklı bir seviyeye çektik.
-VALUE_EDGE_THRESHOLD = 3.0
+VALUE_EDGE_THRESHOLD = 7.0
 TWIN_CETVEL_AGREEMENT_REQUIRED = True
 
 MATCHES_CSV = os.path.join(DATA_DIR, "Matches.csv")
 ELO_CSV = os.path.join(DATA_DIR, "EloRatings.csv")
 GAMES_CSV = os.path.join(DATA_DIR, "games.csv")
 
-print("✅ config.py hazır! (v2 - eşik ve lig-isim düzeltmeleriyle)")
+print("✅ config.py hazır!")
