@@ -117,6 +117,7 @@ def auto_refresh_matches():
     if not ENABLE_LIVE_DATA: return
     matches = fetch_live_matches()
     conn = get_db()
+    basarili = 0
     for m in matches:
         try:
             conn.execute("""INSERT OR REPLACE INTO matches
@@ -125,10 +126,12 @@ def auto_refresh_matches():
                 (m["id"],m["home"],m["away"],m["league"],m["date"],
                  m["status"],m["odds_home"],m["odds_draw"],m["odds_away"],
                  datetime.now().isoformat()))
-        except: pass
+            basarili += 1
+        except Exception as e:
+            print("INSERT HATASI:", e, "veri:", m)
     conn.commit()
     conn.close()
-    print(f"✅ {len(matches)} maç güncellendi")
+    print(f"OK {basarili}/{len(matches)} mac guncellendi, bulunan: {len(matches)}")
 
 def generate_daily_bulten():
     conn = get_db()
